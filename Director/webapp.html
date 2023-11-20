@@ -1,0 +1,221 @@
+<html lang="ja">
+<style>
+    @import url("https://cdn.jsdelivr.net/npm/@exampledev/new.css@1.1.2/new.min.css");
+
+    body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    main {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    h1 {
+        margin: 0;
+    }
+
+    h2 {
+        margin: 0;
+    }
+
+    footer {
+        margin-bottom: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+</style>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Director.picarx-champc</title>
+</head>
+
+<body>
+    <main>
+        <h2 id="sent-display">🤖Director.picarx-chatmpc</h2>
+        <h1 id="voice-display">話しかけてね</h1>
+    </main>
+    <footer>
+        <div>
+            <button onclick="onStartSelect();">進め</button>
+            <button onclick="onStopSelect();">止まれ</button>
+            <button onclick="onSeparateDetect();">離れて</button>
+            <button onclick="onApproachDetect();">近づいて</button>
+            <button onclick="onSlowerDetect();">おそく</button>
+            <button onclick="onFasterDetect();">はやく</button>
+            <button onclick="onGetParamSelect();">パラメータ</button>
+        </div>
+        <div>
+            <input type="text" id="url-picar" onchange="onUrlPicarUpdate();" placeholder="URL of the PicarX">
+            <input type="text" id="say-content" placeholder="Say Content">
+            <button onclick="onSaySelect();">Say</button>
+        </div>
+    </footer>
+</body>
+
+</html>
+<script>
+    const sentDisplay = document.getElementById("sent-display")
+    const voiceDisplay = document.getElementById("voice-display");
+    const urlPicar = document.getElementById("url-picar")
+    const $SayContent = document.getElementById("say-content")
+
+    const recognition = new webkitSpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "ja-JP"
+    recognition.onresult = function (event) {
+        sentDisplay.innerText = ""
+        const result = event.results[event.results.length - 1];
+        const transcript = result[0].transcript;
+        const isFinal = result.isFinal
+        voiceDisplay.innerHTML = transcript;
+        if (isFinal) onSpeechFinish(transcript)
+    };
+    recognition.start();
+
+    const onSaySelect = async () => {
+        const content = $SayContent.value
+        await sender.postSay(content)
+    }
+    const onStartSelect = async () => {
+        await sender.postStart()
+    }
+    const onStopSelect = async () => {
+        await sender.postStop()
+    }
+    const onApproachDetect = async () => {
+        await sender.postApproach()
+    }
+    const onSeparateDetect = async () => {
+        await sender.postSeparate()
+    }
+    const onFasterDetect = async () => {
+        await sender.postFaster()
+    }
+    const onSlowerDetect = async () => {
+        await sender.postSlower()
+    }
+    const onGetParamSelect = async () => {
+        sender.postSayparam()
+        console.table(await sender.getParam())
+    }
+    const onImbackDetect = async()=>{
+        await sender.postSay("おかえりなさいませ、ご主人様")
+    }
+
+    const onUrlPicarUpdate = () => {
+        localStorage.setItem("url-picar", urlPicar.value)
+    }
+    urlPicar.value = localStorage.getItem("url-picar") || "http://"
+
+    const KEYWORDS_TO_ACTION = [
+        [["動いて", "うごいて", "開始", "すすめ", "進め", "動け"], onStartSelect],
+        [["止まって", "止まれ", "とまって", "とまれ"], onStopSelect],
+        [["遅く", "おそく", "遅めに", "おそめに", "ゆっくり"], onSlowerDetect],
+        [["早く", "速く", "はやく"], onFasterDetect],
+        [["離れて", "はなれて", "遠く", "とおく"], onSeparateDetect],
+        [["近く", "ちかく", "近づいて", "ちかづいて"], onApproachDetect],
+        [["ただいま"], onImbackDetect]
+    ]
+    let KEYWORD_TO_ACTIONS = []
+    KEYWORDS_TO_ACTION.forEach(item => {
+        keywords = item[0]
+        action = item[1]
+        keywords.forEach(keyword => { KEYWORD_TO_ACTIONS.push([keyword, action]) })
+    })
+    /**
+     * @param {string} promptText
+     */
+    const onSpeechFinish = (promptText) => {
+        for (item of KEYWORD_TO_ACTIONS) {
+            if (promptText.includes(item[0])) {
+                const action = item[1]
+                action()
+                sentDisplay.innerText = "✅"
+                new Audio("./OnCommandDetermined.mp3").play()
+                return
+            }
+        }
+        sentDisplay.innerText = "❓"
+    }
+
+    class Sender {
+        constructor() { }
+        getURL() {
+            return urlPicar.value
+        }
+        /**
+         * @param {string} endpoint
+         * @param {object} data
+         */
+        async post(endpoint, data) {
+            const res = await fetch(this.getURL() + "/" + endpoint, {
+                method: "POST",
+                body: JSON.stringify(data),
+                headers: { "Content-Type": "application/json" }
+            })
+            return res
+        }
+
+        async postSayparam() {
+            const res = await this.post("sayparam", undefined)
+            return await res.text()
+        }
+
+        /**
+         * @param {string} content
+         */
+        async postSay(content) {
+            const data = { content }
+            const res = await this.post("say", data)
+            return await res.text()
+        }
+        async getParam() {
+            const res = await fetch(this.getURL() + "/param", { method: "GET" })
+            const data = await res.json()
+            return data
+        }
+        async postParam(param) {
+            const res = await this.post("param", param)
+            return await res.text()
+        }
+
+        async postApproach() {
+            const res = await this.post("approach", undefined)
+            return await res.text()
+        }
+        async postSeparate() {
+            const res = await this.post("separate", undefined)
+            return await res.text()
+        }
+        async postFaster() {
+            const res = await this.post("faster", undefined)
+            return await res.text()
+        }
+        async postSlower() {
+            const res = await this.post("slower", undefined)
+            return await res.text()
+        }
+        async postStart() {
+            const res = await this.post("start", undefined)
+            return await res.text()
+        }
+        async postStop() {
+            const res = await this.post("stop", undefined)
+            return data
+        }
+    }
+    const sender = new Sender()
+
+</script>
