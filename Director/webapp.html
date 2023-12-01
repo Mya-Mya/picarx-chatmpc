@@ -59,12 +59,16 @@
             <input type="text" id="url-picar" onchange="onUrlPicarUpdate();" placeholder="URL of the PicarX">
             <input type="text" id="say-content" placeholder="Say Content">
             <button onclick="onSaySelect();">Say</button>
+            <button onclick="onCheckBatteryvoltageSelect();">Battery</button>
         </div>
     </footer>
 </body>
 
 </html>
 <script>
+    const round = (value, base) => {
+        return Math.round(value * base) / base
+    }
     const sentDisplay = document.getElementById("sent-display")
     const voiceDisplay = document.getElementById("voice-display");
     const urlPicar = document.getElementById("url-picar")
@@ -110,13 +114,19 @@
         sender.postSayparam()
         console.table(await sender.getParam())
     }
-    const onImbackDetect = async()=>{
+    const onImbackDetect = async () => {
         await sender.postSay("おかえりなさいませ、ご主人様")
+    }
+    const onCheckBatteryvoltageSelect = async () => {
+        const data = await sender.getBatteryvoltage()
+        const rounded = round(data, 100)
+        alert(rounded)
     }
 
     const onUrlPicarUpdate = () => {
         localStorage.setItem("url-picar", urlPicar.value)
     }
+
     urlPicar.value = localStorage.getItem("url-picar") || "http://"
 
     const KEYWORDS_TO_ACTION = [
@@ -213,6 +223,12 @@
         }
         async postStop() {
             const res = await this.post("stop", undefined)
+            return data
+        }
+        async getBatteryvoltage() {
+            const res = await fetch(this.getURL() + "/batteryvoltage", { method: "GET" })
+            const text = await res.text()
+            const data = parseFloat(text)
             return data
         }
     }
