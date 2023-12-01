@@ -67,7 +67,7 @@ def launch(controller: Controller):
     
     @server.get("/batteryvoltage")
     def get_batteryvoltage():
-        data = controller.device.get_battery_voltage()
+        data = str(controller.device.get_battery_voltage())
         return data
 
     server.run("0.0.0.0", 3838)
