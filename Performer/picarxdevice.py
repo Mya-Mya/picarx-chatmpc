@@ -1,6 +1,6 @@
 from idevice import IDevice
 from picarx import Picarx
-from robot_hat.utils import run_command
+from robot_hat.utils import run_command, get_battery_voltage
 
 
 class PicarxDevice(IDevice):
@@ -12,6 +12,9 @@ class PicarxDevice(IDevice):
 
     def get_distance_to_obstacle(self) -> float:
         return self.px.ultrasonic.read()
+    
+    def get_battery_voltage(self) -> float:
+        return get_battery_voltage()
 
     def say(self, s: str) -> None:
         command = f"sudo echo '{s}' " +\

@@ -21,6 +21,17 @@ class IDevice(ABC):
         distance : float
             前方の障害物までの距離[cm]．
         """
+
+    def get_battery_voltage(self) -> float:
+        """
+        Parameters
+        ----------
+
+        Returns
+        -------
+        voltage : float
+            バッテリーの電圧[V]．
+        """
     
     @abstractmethod
     def say(self,s:str)->None:

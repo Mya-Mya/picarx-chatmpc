@@ -64,6 +64,11 @@ def launch(controller: Controller):
     def post_stop():
         controller.stop()
         return "Stopped"
+    
+    @server.get("/batteryvoltage")
+    def get_batteryvoltage():
+        data = controller.device.get_battery_voltage()
+        return data
 
     server.run("0.0.0.0", 3838)
     return server
